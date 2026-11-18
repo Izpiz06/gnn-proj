@@ -34,6 +34,7 @@ A research framework combining **1D DNA sequence semantics** with **3D chromatin
 | **Biological Task** | Real Ground Truth Labels | Completed | Replaced synthetic noise with **A/B Chromatin Compartment calling** via Hi-C eigenvector decomposition (PC1 oriented with GC content). |
 | **Pipeline Performance** | Preprocessing Caching | Completed | Automated disk caching (`data/graph_{chrom}_{resolution}bp.bin`) with `dgl.save_graphs` / `dgl.load_graphs`, reducing load time to < 0.05s. |
 | **Evaluation Harness** | Train/Val/Test Split | Completed | 70/15/15 node splits on valid genomic bins with validation loss and accuracy tracking. |
+| **Figure Generation** | Performance Suite | Completed | Standalone script (`scripts/evaluate_and_plot.py`) and notebook Cell 9 generating contact maps, confusion matrices, ROC curves, and VRAM profiles. |
 | **Code Structure** | Modular Package | Planned | Refactor notebook logic from `3050.ipynb` into a structured Python package (`src/genome_code/`). |
 
 ---
@@ -76,6 +77,7 @@ conda activate genome_code
 | bitsandbytes | `0.43.3` | Provides 8-bit AdamW optimizer for low-VRAM GPUs |
 | cooler | `>=0.10.0` | Hi-C `.mcool` parsing and contact matrix extraction |
 | biopython | `>=1.80` | FASTA reading and genomic coordinate slicing |
+| scikit-learn | `>=1.3.0` | Metric computation (ROC-AUC, confusion matrix, classification report) |
 | numpy | `<2.0, >=1.26.4` | Enforces NumPy 1.x ABI compatibility |
 
 ---
@@ -161,19 +163,28 @@ python scripts/evaluate_and_plot.py
 
 ## Generated Figures and Verification Matrices
 
-The pipeline automatically evaluates and outputs three core figures in `figures/`:
+The pipeline evaluates and outputs publication-grade figures in the `figures/` directory:
 
-1. **Hi-C Contact Map & A/B Compartments (`figures/hic_compartments_chr22.png`)**:
-   - Heatmap of log10 contact frequencies across Chromosome 22 at 50 kb resolution.
-   - Vertically aligned track of the first eigenvector (PC1), color-coded by Compartment A (active/open, red) and Compartment B (inactive/closed, purple).
-2. **Model Performance & Test Metrics (`figures/model_performance.png`)**:
-   - Training vs. Validation Cross-Entropy Loss curve over epochs.
-   - Validation Accuracy curve across epochs.
-   - Confusion Matrix heatmap for the held-out test split (evaluating True vs. Predicted Compartment A/B).
-   - Receiver Operating Characteristic (ROC) curve with area under the curve (AUC) metric.
-3. **Hardware Utilization Profile (`figures/vram_throughput_benchmark.png`)**:
-   - Peak VRAM allocation plotted against the NVIDIA RTX 3050 6144 MB hardware boundary.
-   - Training throughput (iterations per second).
+### 1. Hi-C Contact Matrix and A/B Compartment Architecture
+Heatmap of log10 contact frequencies across Chromosome 22 at 50 kb resolution, aligned with the derived first principal component (PC1) eigenvector track color-coded by Compartment A (active/open, orange) and Compartment B (inactive/closed, purple).
+
+![Hi-C Contact Map and A/B Compartments](figures/hic_compartments_chr22.png)
+
+### 2. Model Performance, Confusion Matrix, and ROC Curve
+Evaluation results on the held-out test split (109 genomic bins) after 3 training epochs:
+- **Test Loss**: 0.542
+- **Test Accuracy**: 79.8%
+- **Test ROC-AUC**: 0.814
+
+![Model Performance and Confusion Matrix](figures/model_performance.png)
+
+### 3. Hardware Memory and Throughput Profile
+Monitored training execution on the NVIDIA GeForce RTX 3050 6 GB Laptop GPU:
+- **Peak VRAM Allocated**: ~3.7 GB (comfortably beneath the 6.1 GB hardware ceiling).
+- **Throughput**: ~0.55 iterations per second under fp16 AMP and 8-bit AdamW.
+
+![Hardware Utilization and Throughput](figures/vram_throughput_benchmark.png)
+
 
 ---
 
