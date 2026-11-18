@@ -90,6 +90,12 @@ genome_code/
 ├── 1000genomes_reference.fasta # Reference genome for Chromosome 22 (hg38) [gitignored]
 ├── requirements.txt            # Pinned pip dependencies with CUDA 12.1 wheels
 ├── environment.yml             # Conda environment definition (Python 3.11)
+├── scripts/
+│   └── evaluate_and_plot.py    # Figure generation and metric plotting script
+├── figures/                    # Publication-grade figures and evaluation plots
+│   ├── hic_compartments_chr22.png
+│   ├── model_performance.png
+│   └── vram_throughput_benchmark.png
 ├── .gitignore                  # Ignores datasets (*.mcool, *.fasta), cache (*.bin), .venv
 └── README.md                   # Project documentation and status
 ```
@@ -143,7 +149,31 @@ genome_code/
 3. Execute the notebook cells sequentially:
    - **Cell 0-4**: Environment validation.
    - **Cell 6-7**: Download datasets (if not already present).
-   - **Cell 8**: Loads or creates the cached biological graph (chr22 50kb), instantiates `DNABertGNN`, and trains with validation accuracy tracking.
+   - **Cell 8**: Loads or creates the cached biological graph (chr22 50kb), instantiates `DNABertGNN`, trains the model, and evaluates test metrics.
+   - **Cell 9**: Renders and saves all publication-grade figures into the `figures/` directory.
+
+Alternatively, generate the visual figures directly via the command-line script:
+```bash
+python scripts/evaluate_and_plot.py
+```
+
+---
+
+## Generated Figures and Verification Matrices
+
+The pipeline automatically evaluates and outputs three core figures in `figures/`:
+
+1. **Hi-C Contact Map & A/B Compartments (`figures/hic_compartments_chr22.png`)**:
+   - Heatmap of log10 contact frequencies across Chromosome 22 at 50 kb resolution.
+   - Vertically aligned track of the first eigenvector (PC1), color-coded by Compartment A (active/open, red) and Compartment B (inactive/closed, purple).
+2. **Model Performance & Test Metrics (`figures/model_performance.png`)**:
+   - Training vs. Validation Cross-Entropy Loss curve over epochs.
+   - Validation Accuracy curve across epochs.
+   - Confusion Matrix heatmap for the held-out test split (evaluating True vs. Predicted Compartment A/B).
+   - Receiver Operating Characteristic (ROC) curve with area under the curve (AUC) metric.
+3. **Hardware Utilization Profile (`figures/vram_throughput_benchmark.png`)**:
+   - Peak VRAM allocation plotted against the NVIDIA RTX 3050 6144 MB hardware boundary.
+   - Training throughput (iterations per second).
 
 ---
 
