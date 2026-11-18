@@ -5,5 +5,7 @@
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+*.bin
+data/*.bin
 benchmark_*.json
 

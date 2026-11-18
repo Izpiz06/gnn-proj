@@ -31,8 +31,9 @@ A research framework combining **1D DNA sequence semantics** with **3D chromatin
 | **Model Architecture** | Modality Fusion | ✅ Fixed | Aligned 2-hop neighborhood sequence embeddings with seed/destination nodes (`seq_embeddings[:num_seed]`) before `torch.cat([seq, h])`. |
 | **Training Pipeline** | Backward Pass & Optimization | ✅ Done | Verified end-to-end training step on NVIDIA RTX 3050 Laptop GPU (Peak VRAM: **~3.3 GB**, within 6 GB budget). |
 | **Environment & Toolchain** | Pinned Dependencies | ✅ Fixed | Created `requirements.txt` and `environment.yml` targeting Python 3.11 with CUDA 12.1 and NumPy < 2.0. |
-| **Biological Task** | Real Ground Truth Labels | ⏳ Next | Currently using synthetic labels (`torch.randint`) for architecture verification; need integration with ENCODE / SCREEN / ChromHMM annotations. |
-| **Pipeline Performance** | Preprocessing Caching | ⏳ Next | Cache pre-tokenized bin sequences and precomputed graph structure to disk (e.g. HDF5 / PyTorch `.pt`) to eliminate repeated tokenization overhead. |
+| **Biological Task** | Real Ground Truth Labels | ✅ Done | Replaced synthetic `torch.randint` with **A/B Chromatin Compartment calling** via Hi-C eigenvector decomposition (PC1 oriented with GC content). |
+| **Pipeline Performance** | Preprocessing Caching | ✅ Done | Implemented automatic disk caching (`data/graph_{chrom}_{resolution}bp.bin`) with `dgl.save_graphs` / `dgl.load_graphs`, cutting load times to < 0.05s. |
+| **Evaluation Harness** | Train/Val/Test Split | ✅ Done | 70/15/15 node splits on valid genomic bins with validation loss and accuracy tracking. |
 | **Code Structure** | Modular Package | ⏳ Next | Refactor notebook logic from `3050.ipynb` into a structured Python package (`src/genome_code/`). |
 
 ---
@@ -119,6 +120,15 @@ genome_code/
 ### 4. DGL Seed Node Dtype
 - **Clarification**: DGL neighbor sampling expects seed IDs (`train_nids`) to match the graph's `idtype`. Since standard tensor indices default to `int64`, passing `torch.arange(g.num_nodes())` (int64) is correct and verified.
 
+### 5. Biological Ground Truth: A/B Chromatin Compartments
+- **Methodology**: Instead of synthetic random 0/1 labels, biological ground truth is derived from the contact correlation matrix via eigenvector decomposition (first principal component / PC1).
+- **GC Alignment**: PC1 is automatically correlated against the GC content of the corresponding genomic bins from the FASTA reference. If the correlation is negative, the eigenvector is inverted so that **Compartment A** (label `1`) consistently represents active, gene-dense, open chromatin, while **Compartment B** (label `0`) represents closed heterochromatin.
+- **Unmapped Filtering**: Low-mappability / centromeric regions (label `-1`) are excluded from train/val/test splits.
+
+### 6. Sub-Second Startup via Graph & Token Caching
+- **Implementation**: Preprocessed DGL graphs (containing Hi-C contact edges, weights, DNABERT-2 token IDs, attention masks, and train/val/test masks) are automatically cached in `data/graph_{chrom}_{resolution}bp.bin` using `dgl.save_graphs`.
+- **Performance**: Subsequent runs bypass all cooler matrix extraction and BPE tokenization loops, loading the entire multimodal graph in **< 0.05 seconds**.
+
 ---
 
 ## 🏃 Running the Pipeline
@@ -134,17 +144,19 @@ genome_code/
 3. Run the notebook cells sequentially:
    - **Cell 0-4**: Environment validation.
    - **Cell 6-7**: Download datasets (if not already present).
-   - **Cell 8**: Builds the biological graph (default: `chr22`, matching `1000genomes_reference.fasta`), instantiates `DNABertGNN`, and runs the benchmark harness with peak VRAM tracking.
+   - **Cell 8**: Loads or creates the cached biological graph (chr22 50kb), instantiates `DNABertGNN`, and trains with validation accuracy tracking.
 
 ---
 
 ## 🗺️ Next Steps & Roadmap
 
-1. **Biological Annotation Integration**:
-   - Ingest ENCODE / SCREEN chromatin state annotations or ChromHMM 18-state models to replace dummy 0/1 labels with real biological classification targets.
-2. **Preprocessing & Embedding Caching**:
-   - Save precomputed sequence tokens and graph structures to disk so subsequent training runs start immediately without re-parsing FASTA/Cooler data.
-3. **Multi-Chromosome & Genome-Wide Scaling**:
-   - Support loading all autosomes by downloading the complete hg38 assembly or streaming per-chromosome matrices.
-4. **Package Refactor**:
+1. **Baseline Comparisons (Ablation Study)**:
+   - Implement Sequence-only baseline (DNABERT-2 + MLP, no graph).
+   - Implement Graph-only baseline (GAT on Hi-C without sequence features).
+   - Compare test ROC-AUC and PR-AUC against the Hybrid model.
+2. **Whole-Genome Scaling**:
+   - Ingest the remaining autosomes (chr1–chr21) with full reference FASTA.
+   - Implement cross-chromosome holdout evaluation (e.g. train on chr1–18, val on chr19–20, test on chr21–22).
+3. **Modular Package Migration**:
+   - Refactor `3050.ipynb` into a clean, installable package (`src/genome_code/`).
    - Modularize code into `src/genome_code/data/`, `src/genome_code/models/`, and `src/genome_code/train/`.
