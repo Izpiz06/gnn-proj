@@ -1,2 +1,9 @@
 *.fasta
 *.mcool
+.venv
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+benchmark_*.json
+
