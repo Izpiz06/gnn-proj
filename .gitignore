@@ -8,4 +8,5 @@ __pycache__/
 *.bin
 data/*.bin
 benchmark_*.json
+ablation_results.json
 
